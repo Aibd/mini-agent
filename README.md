@@ -1,97 +1,56 @@
 # Mini Agent
 
-这个目录里放的是一个简化版的多轮 Agent 示例：
+基于 Claude Code 相关泄露源码里 `query.ts` 的核心文件删减为一个最小可运行示例。
 
-- `mini-agent.mjs`：对话主循环、本地工具、终端输出
-- `anthropic-call-model.mjs`：兼容 Anthropic 接口格式的模型调用封装
+它保留了最关键的 Agent 主循环：
 
-## 运行要求
+`用户输入 -> 模型调用 -> tool_use -> 执行工具 -> tool_result -> 下一轮 -> 最终答案`
 
-- Node.js 18 或更高版本
-- 可用的 API Key
+这个仓库不是 Claude Code 的完整复刻，而是把核心流程拆出来，做成一个方便阅读理解Agent的核心原理，方便实验和后续自己扩展的小项目。
 
-## 推荐运行方式
+## 文件
 
-建议先进入当前目录再运行，这样工作目录和 `.env` 的读取位置都更明确。
+- `mini-agent.mjs`
+  对话主循环、turn 管理、工具执行。
+- `anthropic-call-model.mjs`
+  模型请求、错误处理、重试。
+- `.env.example`
+  配置示例。
 
-Windows PowerShell：
+## 已实现
 
-```powershell
-cd "D:\codex workspace\mini-agent"
-node .\mini-agent.mjs "请简单介绍一下自己。"
-```
+- 多轮 turn
+- `tool_use / tool_result`
+- 两个演示工具：`get_current_time`、`add_numbers`
+- 基础错误提示
+- 简单重试
 
-Mac 或 Linux：
+## 配置
 
-```bash
-cd "/path/to/codex workspace/mini-agent"
-node ./mini-agent.mjs "请简单介绍一下自己。"
-```
+必填：
 
-## 配置项说明
+- `API_KEY`
 
-脚本会读取下面这些环境变量：
+选填：
 
-- `API_KEY`：必填
-- `BASE_URL`：选填，默认值是 `https://api.minimaxi.com/anthropic`
-- `MODEL`：选填，默认值是 `MiniMax-M2.7`
+- `BASE_URL`，默认 `https://api.minimaxi.com/anthropic`
+- `MODEL`，默认 `MiniMax-M2.7`
 
-同时也兼容 Anthropic 风格的变量名：
+也兼容：
 
 - `ANTHROPIC_API_KEY`
 - `ANTHROPIC_BASE_URL`
 - `ANTHROPIC_MODEL`
 
-## API_KEY 配置方法
-
-### Windows PowerShell
-
-只在当前终端窗口内生效：
-
-```powershell
-$env:API_KEY = "your_api_key_here"
-node .\mini-agent.mjs "请简单介绍一下自己。"
-```
-
-如果你还想同时指定接口地址或模型：
-
-```powershell
-$env:API_KEY = "your_api_key_here"
-$env:BASE_URL = "https://api.minimaxi.com/anthropic"
-$env:MODEL = "MiniMax-M2.7"
-node .\mini-agent.mjs "请简单介绍一下自己。"
-```
-
-### Windows CMD
-
-```cmd
-set API_KEY=your_api_key_here
-node .\mini-agent.mjs "请简单介绍一下自己。"
-```
-
-### Mac / Linux（zsh 或 bash）
-
-只在当前终端窗口内生效：
-
-```bash
-export API_KEY="your_api_key_here"
-node ./mini-agent.mjs "请简单介绍一下自己。"
-```
-
-如果你还想同时指定接口地址或模型：
+环境变量示例：
 
 ```bash
 export API_KEY="your_api_key_here"
 export BASE_URL="https://api.minimaxi.com/anthropic"
 export MODEL="MiniMax-M2.7"
-node ./mini-agent.mjs "请简单介绍一下自己。"
 ```
 
-## 可选的 .env 文件
-
-脚本里调用了 `process.loadEnvFile()`，所以如果你在当前目录下创建 `.env` 文件，并且从当前目录运行命令，Node 会自动加载它。
-
-示例：
+`.env` 示例：
 
 ```dotenv
 API_KEY=your_api_key_here
@@ -99,7 +58,14 @@ BASE_URL=https://api.minimaxi.com/anthropic
 MODEL=MiniMax-M2.7
 ```
 
-## 多轮工具调用示例
+代码里调用了 `process.loadEnvFile()`，所以当前目录下的 `.env` 会自动加载到环境变量里。
+
+## 运行示例
+
+```bash
+cd ./mini-agent
+node ./mini-agent.mjs "请简单介绍一下自己。"
+```
 
 触发 `turn 2`：
 
@@ -110,5 +76,36 @@ node ./mini-agent.mjs "先调用 get_current_time 查询 Asia/Shanghai 当前时
 触发 `turn 3`：
 
 ```bash
-node ./mini-agent.mjs "先调用 get_current_time 获取 Asia/Shanghai 当前时间。拿到结果后，取出其中的小时数，再调用 add_numbers 把这个小时数和 10 相加，最后告诉我最终结果。"
+node ./mini-agent.mjs "先调用 get_current_time 获取 Asia/Shanghai 当前时间。拿到结果后，取出小时数，再调用 add_numbers 把这个小时数和 10 相加，最后告诉我结果。"
 ```
+
+## 相比 query.ts 删了哪些
+
+为了做成最小示例，这里把很多完整工程能力都删掉了，只保留多轮对话和工具调用这条主线。
+
+当前删掉或没有实现的部分主要包括：
+
+- 更复杂的状态机和中断恢复
+- 更完整的消息事件体系
+- 流式输出
+- 文件系统相关工具
+- 命令执行相关工具
+- 编辑类工具
+- 会话持久化
+- 更细的日志、监控、诊断能力
+- 更复杂的工具注册和调度机制
+
+所以这个项目更适合拿来理解“主循环是怎么跑起来的”，而不是直接当成 Claude Code 完整替代品。
+
+## 后续怎么扩充
+
+如果要继续往上补，可以按下面这个顺序加：
+
+1. 把内置工具拆成独立 `tools/` 目录，做成可注册结构。
+2. 给模型输出加流式处理，让终端能边生成边显示。
+3. 增加文件读取、文件写入、命令执行等工具。
+4. 把消息历史持久化，支持连续会话。
+5. 增加更明确的状态、日志和错误分层。
+6. 再往上做更完整的 Agent 编排逻辑。
+
+如果你是从 Claude Code 那批泄露源码一路看到这里，这个仓库最值得看的就是这个最小闭环：先把 loop 看懂，再逐步把能力补回去。
